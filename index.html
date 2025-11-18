@@ -1,0 +1,43 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <title>Millbrook X9 splat</title>
+  <style>
+    html, body {
+      margin: 0;
+      padding: 0;
+      width: 100%;
+      height: 100%;
+      overflow: hidden;
+    }
+    canvas {
+      width: 100%;
+      height: 100%;
+      display: block;
+    }
+  </style>
+</head>
+<body>
+  <canvas id="spark-canvas"></canvas>
+
+  <script type="module">
+    import {
+      SparkRenderer,
+      SparkViewpoint,
+      SplatMesh
+    } from "https://cdn.jsdelivr.net/npm/@spark-js/core/+esm";
+
+    const canvas = document.getElementById("spark-canvas");
+    const renderer = new SparkRenderer(canvas);
+    const viewpoint = new SparkViewpoint(renderer);
+
+    const mesh = new SplatMesh({
+      url: "https://bradleylab-public.s3.us-east-2.amazonaws.com/millbrook/x9_millbrook_dan.ply"
+    });
+
+    renderer.scene.add(mesh);
+    renderer.start();
+  </script>
+</body>
+</html>
