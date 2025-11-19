@@ -2,7 +2,7 @@
 <html lang="en">
 <head>
   <meta charset="UTF-8" />
-  <title>Millbrook X9 viewer</title>
+  <title>Millbrook X9 Gaussian Splat</title>
   <style>
     html, body {
       margin: 0;
@@ -10,6 +10,7 @@
       width: 100%;
       height: 100%;
       overflow: hidden;
+      background: #cccccc;
     }
     canvas {
       display: block;
@@ -21,16 +22,18 @@
       top: 50%;
       left: 50%;
       transform: translate(-50%, -50%);
-      color: white;
+      color: #333;
       font-family: Arial;
       font-size: 20px;
+      background: rgba(255,255,255,0.8);
+      padding: 20px;
+      border-radius: 10px;
     }
   </style>
 </head>
 <body>
-  <div id="loading">Loading point cloud...</div>
+  <div id="loading">Loading gaussian splat...</div>
   
-  <script src="https://cdn.jsdelivr.net/npm/laz-perf@0.0.3/lib/laz-perf.min.js"></script>
   <script type="module">
     import * as THREE from "https://cdn.jsdelivr.net/npm/three@0.160.0/build/three.module.js";
     import { OrbitControls } from "https://cdn.jsdelivr.net/npm/three@0.160.0/examples/jsm/controls/OrbitControls.js";
@@ -41,7 +44,7 @@
     const camera = new THREE.PerspectiveCamera(
       60,
       window.innerWidth / window.innerHeight,
-      0.01,
+      0.1,
       10000
     );
 
@@ -52,83 +55,54 @@
     const controls = new OrbitControls(camera, renderer.domElement);
     controls.enableDamping = true;
 
-    // Enhanced lighting for better appearance
-    const ambientLight = new THREE.AmbientLight(0xffffff, 0.6);
-    scene.add(ambientLight);
-    
-    const directionalLight = new THREE.DirectionalLight(0xffffff, 0.8);
-    directionalLight.position.set(1, 1, 1);
-    scene.add(directionalLight);
+    const splatUrl = "https://bradleylab-public.s3.us-east-2.amazonaws.com/millbrook/x9_millbrook.splat";
 
-    const lasUrl = "https://bradleylab-public.s3.us-east-2.amazonaws.com/millbrook/x9_millbrook_dan.las";
-
-    // Load LAS file
-    async function loadLAS(url) {
+    async function loadSplat(url) {
       const response = await fetch(url);
-      const arrayBuffer = await response.arrayBuffer();
+      const buffer = await response.arrayBuffer();
+      const view = new DataView(buffer);
       
-      // Parse LAS using laz-perf
-      const loader = new LASLoader();
-      const pointData = await loader.load(arrayBuffer);
+      // Each splat is 32 bytes:
+      // 12 bytes: position (3 floats)
+      // 12 bytes: scale (3 floats)
+      // 4 bytes: color rgba (4 bytes)
+      // 16 bytes: rotation quaternion (4 floats) - we'll skip for simple rendering
       
-      return pointData;
-    }
-
-    // Simple LAS parser (for uncompressed LAS)
-    class LASLoader {
-      async load(arrayBuffer) {
-        const view = new DataView(arrayBuffer);
+      const rowLength = 32;
+      const numSplats = buffer.byteLength / rowLength;
+      
+      console.log(`Loading ${numSplats.toLocaleString()} splats`);
+      
+      const positions = new Float32Array(numSplats * 3);
+      const colors = new Uint8Array(numSplats * 3);
+      const sizes = new Float32Array(numSplats);
+      
+      for (let i = 0; i < numSplats; i++) {
+        const offset = i * rowLength;
         
-        // Read LAS header
-        const pointDataOffset = view.getUint32(96, true);
-        const pointDataRecordLength = view.getUint16(105, true);
-        const numPoints = view.getUint32(107, true);
+        // Position
+        positions[i * 3] = view.getFloat32(offset, true);
+        positions[i * 3 + 1] = view.getFloat32(offset + 4, true);
+        positions[i * 3 + 2] = view.getFloat32(offset + 8, true);
         
-        const xScale = view.getFloat64(131, true);
-        const yScale = view.getFloat64(139, true);
-        const zScale = view.getFloat64(147, true);
-        const xOffset = view.getFloat64(155, true);
-        const yOffset = view.getFloat64(163, true);
-        const zOffset = view.getFloat64(171, true);
+        // Scale (use first component as point size)
+        sizes[i] = view.getFloat32(offset + 12, true);
         
-        // Read points
-        const positions = new Float32Array(numPoints * 3);
-        const colors = new Uint8Array(numPoints * 3);
+        // Color
+        colors[i * 3] = view.getUint8(offset + 24);
+        colors[i * 3 + 1] = view.getUint8(offset + 25);
+        colors[i * 3 + 2] = view.getUint8(offset + 26);
         
-        for (let i = 0; i < numPoints; i++) {
-          const offset = pointDataOffset + (i * pointDataRecordLength);
-          
-          // Read XYZ (scaled integers)
-          const x = view.getInt32(offset, true) * xScale + xOffset;
-          const y = view.getInt32(offset + 4, true) * yScale + yOffset;
-          const z = view.getInt32(offset + 8, true) * zScale + zOffset;
-          
-          positions[i * 3] = x;
-          positions[i * 3 + 1] = y;
-          positions[i * 3 + 2] = z;
-          
-          // Read RGB (if available, usually at offset 20 for point format 2/3)
-          if (pointDataRecordLength >= 26) {
-            colors[i * 3] = view.getUint16(offset + 20, true) / 256;     // R
-            colors[i * 3 + 1] = view.getUint16(offset + 22, true) / 256; // G
-            colors[i * 3 + 2] = view.getUint16(offset + 24, true) / 256; // B
-          } else {
-            // Default gray if no color
-            colors[i * 3] = 128;
-            colors[i * 3 + 1] = 128;
-            colors[i * 3 + 2] = 128;
-          }
+        if ((i + 1) % 100000 === 0) {
+          document.getElementById('loading').textContent = 
+            `Loading: ${((i + 1) / numSplats * 100).toFixed(0)}%`;
         }
-        
-        document.getElementById('loading').textContent = `Loaded ${numPoints.toLocaleString()} points`;
-        setTimeout(() => document.getElementById('loading').style.display = 'none', 2000);
-        
-        return { positions, colors, numPoints };
       }
+      
+      return { positions, colors, sizes, numSplats };
     }
 
-    // Load and display
-    loadLAS(lasUrl).then(({ positions, colors, numPoints }) => {
+    loadSplat(splatUrl).then(({ positions, colors, sizes, numSplats }) => {
       const geometry = new THREE.BufferGeometry();
       geometry.setAttribute('position', new THREE.BufferAttribute(positions, 3));
       geometry.setAttribute('color', new THREE.BufferAttribute(colors, 3, true));
@@ -137,13 +111,12 @@
       geometry.computeBoundingSphere();
       geometry.center();
 
-      // Enhanced material for smoother appearance
       const material = new THREE.PointsMaterial({
-        size: 0.2,  // Larger points for smoother look
+        size: 0.15,  // Can adjust this
         sizeAttenuation: true,
         vertexColors: true,
-        opacity: 0.95,
-        transparent: true
+        transparent: true,
+        opacity: 0.9
       });
 
       const points = new THREE.Points(geometry, material);
@@ -154,10 +127,12 @@
       camera.near = radius / 100.0;
       camera.far = radius * 20.0;
       camera.updateProjectionMatrix();
-      controls.update();
+      
+      document.getElementById('loading').style.display = 'none';
+      console.log(`Loaded ${numSplats.toLocaleString()} splats`);
     }).catch(error => {
-      console.error("Error loading LAS:", error);
-      document.getElementById('loading').textContent = "Error loading point cloud";
+      console.error("Error loading splat:", error);
+      document.getElementById('loading').textContent = "Error loading splat";
     });
 
     window.addEventListener("resize", () => {
