@@ -57,10 +57,15 @@
 
     const splatUrl = "https://bradleylab-public.s3.us-east-2.amazonaws.com/millbrook/x9_millbrook.splat";
 
-    async function loadSplat(url) {
-      const response = await fetch(url);
-      const buffer = await response.arrayBuffer();
-      const view = new DataView(buffer);
+console.log("About to load splat from:", splatUrl);
+
+async function loadSplat(url) {
+  console.log("loadSplat function called");
+  const response = await fetch(url);
+  console.log("Fetch completed, response:", response);
+  const buffer = await response.arrayBuffer();
+  console.log("Buffer loaded, size:", buffer.byteLength);
+  const view = new DataView(buffer);
       
       // Each splat is 44 bytes:
       // 12 bytes: position (3 floats)
