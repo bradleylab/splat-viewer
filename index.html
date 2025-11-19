@@ -62,13 +62,13 @@
       const buffer = await response.arrayBuffer();
       const view = new DataView(buffer);
       
-      // Each splat is 32 bytes:
+      // Each splat is 44 bytes:
       // 12 bytes: position (3 floats)
       // 12 bytes: scale (3 floats)
       // 4 bytes: color rgba (4 bytes)
       // 16 bytes: rotation quaternion (4 floats) - we'll skip for simple rendering
       
-      const rowLength = 32;
+      const rowLength = 44;
       const numSplats = buffer.byteLength / rowLength;
       
       console.log(`Loading ${numSplats.toLocaleString()} splats`);
