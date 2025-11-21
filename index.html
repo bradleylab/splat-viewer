@@ -147,4 +147,24 @@
       
       document.getElementById('loading').style.display = 'none';
       console.log('Loaded', numSplats.toLocaleString(), 'splats successfully');
-    }).catch(error
+    }).catch(error => {
+      console.error('Error loading splat:', error);
+      document.getElementById('loading').textContent = 'Error loading splat: ' + error.message;
+    });
+
+    window.addEventListener('resize', () => {
+      camera.aspect = window.innerWidth / window.innerHeight;
+      camera.updateProjectionMatrix();
+      renderer.setSize(window.innerWidth, window.innerHeight);
+    });
+
+    function animate() {
+      requestAnimationFrame(animate);
+      controls.update();
+      renderer.render(scene, camera);
+    }
+
+    animate();
+  </script>
+</body>
+</html>
