@@ -67,19 +67,9 @@
     const controls = new OrbitControls(camera, renderer.domElement);
     controls.enableDamping = true;
 
-    const splatUrl = 'https://bradleylab-public.s3.us-east-2.amazonaws.com/millbrook/x9_millbrook_dan.splat';
+    const splatUrl = 'https://bradleylab-public.s3.us-east-2.amazonaws.com/millbrook/x9_millbrook_decimated.splat';
 
     console.log('About to load splat from:', splatUrl);
-
-    const splatUrl = 'https://bradleylab-public.s3.us-east-2.amazonaws.com/millbrook/x9_millbrook_dan.splat';
-
-console.log('About to load splat from:', splatUrl);
-
-// Add this test fetch to see what happens:
-fetch(splatUrl)
-  .then(r => console.log('Fetch response:', r.status, r.headers.get('content-length')))
-  .catch(e => console.error('Fetch failed:', e));
-
 
     async function loadSplat(url) {
       console.log('loadSplat function called');
@@ -157,24 +147,4 @@ fetch(splatUrl)
       
       document.getElementById('loading').style.display = 'none';
       console.log('Loaded', numSplats.toLocaleString(), 'splats successfully');
-    }).catch(error => {
-      console.error('Error loading splat:', error);
-      document.getElementById('loading').textContent = 'Error loading splat: ' + error.message;
-    });
-
-    window.addEventListener('resize', () => {
-      camera.aspect = window.innerWidth / window.innerHeight;
-      camera.updateProjectionMatrix();
-      renderer.setSize(window.innerWidth, window.innerHeight);
-    });
-
-    function animate() {
-      requestAnimationFrame(animate);
-      controls.update();
-      renderer.render(scene, camera);
-    }
-
-    animate();
-  </script>
-</body>
-</html>
+    }).catch(error
